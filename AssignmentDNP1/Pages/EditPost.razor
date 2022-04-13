@@ -1,0 +1,94 @@
+﻿@page "/EditPost/{Id:int}"
+@using Domain.Models
+@using Blazor.Services
+@using AssignmentDNP1.Authentication
+
+@inject IForumHome forumHome
+@inject NavigationManager navMgr
+
+<div class="box">
+    <h3>Edit Post</h3>
+    <EditForm Model="@forumToEdit" OnValidSubmit="@Save">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+        <div class="form-group field">
+            <span>
+                <label>User Id:</label>
+            </span>
+            <span>
+                <InputNumber @bind-Value="forumToEdit.OwnerId"/>
+            </span>
+        </div>
+        <div class="form-group field">
+            <span>
+                <label>Title:</label>
+            </span>
+            <span>
+                <InputTextArea rows="1" @bind-Value="forumToEdit.Title"/>
+            </span>
+        </div>
+        <div class="form-group field">
+                    <span>
+                        <label>Comment:</label>
+                    </span>
+                    <span>
+                        <InputTextArea rows="10" @bind-Value="forumToEdit.Comment"/>
+                    </span>
+                </div>
+        <p class="actions">
+            <button class="acceptbtn" type="submit">Update</button>
+             
+             <button class="acceptbtn" @onclick="AcceptEdit">Back to Posts</button>
+             
+                    
+        </p>
+    </EditForm>
+    @if (!string.IsNullOrEmpty(errorLabel))
+    {
+        <label>@errorLabel</label>
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public int Id { get; set; }
+
+    private Forum forumToEdit { get; set; } = new Forum(); 
+    private string errorLabel = String.Empty;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        checkLogin();
+        forumToEdit = await forumHome.GetByIdAsync(Id);
+    }
+
+    private async Task Save()
+    {
+        errorLabel = "";
+        try
+        {
+            await forumHome.UpdateAsync(forumToEdit);
+            navMgr.NavigateTo("/Forums");
+        }
+        catch (Exception e)
+        {
+            errorLabel = e.Message;
+        }
+    }
+
+    private async Task AcceptEdit()
+    {
+        navMgr.NavigateTo("/Forums"); 
+    }
+    
+    public void checkLogin()
+    {
+
+        if (AuthServiceImpl.getCurrentUser() == null)
+        {
+            navMgr.NavigateTo("/Login");
+        } 
+    }
+    
+}

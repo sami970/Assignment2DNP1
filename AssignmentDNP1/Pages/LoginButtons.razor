@@ -1,0 +1,26 @@
+﻿@namespace Login
+@using AssignmentDNP1.Authentication
+@inject NavigationManager navMgr
+@inject IAuthService authService
+
+<h3>LoginButtons</h3>
+<AuthorizeView>
+    <Authorized>
+        <img class="icon" src="img/Logout.png" @onclick="Logout"/>
+    </Authorized>
+    <NotAuthorized>
+        <img class="icon" src="img/Login.png" @onclick="Login"/>
+    </NotAuthorized>
+</AuthorizeView>
+@code {
+    private void Login()
+    {
+        navMgr.NavigateTo("/Login");
+    }
+
+    private async Task Logout()
+    {
+        await authService.LogoutAsync();
+        navMgr.NavigateTo("/");
+    }
+}

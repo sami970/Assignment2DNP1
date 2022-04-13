@@ -1,0 +1,262 @@
+﻿@page "/Forums"
+@using Domain.Models
+@using Blazor.Services
+@using UIElements
+@using AssignmentDNP1.Authentication
+@inject IForumHome ForumHome
+@inject NavigationManager navMgr
+
+<h3>Posts</h3>
+
+<div class="filterbar">
+    <div class="filterscontainer">
+        <img src="img/@(doShowFilters?"clear_" : "")funnel.png" class="funnel" @onclick="OpenCloseFilters"/>
+        @if (doShowFilters)
+        {
+            <div class="filter">
+                <div>
+                    <label>Owner ID:</label>
+                </div>
+                <div>
+                    <input type="number" class="owneridfield" @oninput="args => UpdateOwnerFilter(args)" min="0"/>
+                </div>
+            </div>
+            
+        }
+    </div>
+</div>
+
+@if (allForums == null)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else if (!allForums.Any())
+{
+    <p>
+        <em>No Posts  exist. Please add some.</em>
+    </p>
+}
+else if (!forumsToShow.Any())
+{
+    <p>
+        <em>No forums matching your search criteria</em>
+    </p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Owner ID</th>
+            <th>Post ID</th>
+            <th>Title</th>
+            <th>Edit</th>
+            <th>Remove</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in forumsToShow)
+        {
+            <tr>
+                <td>@item.OwnerId</td>
+                <td>@item.Id</td>
+                <td>@item.Title</td>
+                <td>
+                    @* <img src="img/edit.gif" class="funnel" @onclick="@(() => ShowEdit(item))"/> *@
+                    <img src="img/edit.gif" class="funnel" @onclick="@(() => Edit(item.Id))"/>
+                    </td>
+                <td>
+                    <label @onclick="@(() => RemoveForum(item.Id))" style="cursor:pointer; color: red; font-weight: bold">
+                        &#x2717;
+                    </label>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+@if (!string.IsNullOrEmpty(errorLabel))
+{
+    <label style="color: red">@errorLabel</label>
+}
+@if (showModal)
+{
+    <Modal>
+        <h3>Edit Category</h3>
+        <hr/>
+        <div style="margin-bottom: 5px">
+            <label style="font-weight: bold">Todo Title</label>
+        </div>
+        <div style="margin-bottom: 5px">
+            <textarea style="width: 20ch; border-radius: 10px; padding: 3px;" @bind="@editedTitle"/>
+        </div>
+        <div style="margin-bottom: 5px">
+            <label style="font-weight: bold">Owner</label>
+        </div>
+        <div style="margin-bottom: 5px">
+            <input type="number" min="0" style="width: 10ch; border-radius: 10px; padding: 3px; text-align: center" @bind="@editedOwner"/>
+        </div>
+        @if (!string.IsNullOrEmpty(editErrorLabel))
+        {
+            <div>
+                <label style="color:red">@editErrorLabel</label>
+            </div>
+        }
+        <div style="margin-top: 15px">
+            <button style="margin-right: 10px" @onclick="AcceptEdit">Accept</button>
+            <button style="margin-left: 10px" @onclick="@(() => showModal = false)">Cancel</button>
+        </div>
+    </Modal>
+}
+
+@code {
+
+    private ICollection<Forum> allForums, forumsToShow;
+    private string errorLabel;
+
+    private int? ownerIdFilter;
+    private bool? isCompletedFilter;
+    private bool doShowFilters;
+    
+    private bool showModal;
+    private string editedTitle = String.Empty;
+    private int editedOwner;
+    private Forum forumToEdit = new();
+    private string editErrorLabel = string.Empty;
+
+    private void ShowEdit(Forum forum)
+    {
+        forumToEdit = forum;
+        editedOwner = forum.OwnerId;
+        editedTitle = forum.Title;
+        showModal = true;
+    }
+
+    private async Task AcceptEdit()
+    {
+        try
+        {
+            Forum updated = new()
+            {
+                Id = forumToEdit.Id,
+                Title = editedTitle,
+                OwnerId = editedOwner
+            };
+            await ForumHome.UpdateAsync(updated);
+            forumToEdit.Title = updated.Title;
+            forumToEdit.OwnerId = updated.OwnerId;
+            showModal = false;
+        }
+        catch (Exception e)
+        {
+            editErrorLabel = e.Message;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        allForums = await ForumHome.GetAsync();
+        forumsToShow = allForums;
+    }
+
+    private async Task RemoveForum(int id)
+    {
+        errorLabel = "";
+        try
+        {
+            checkLogin();
+            Forum todoToRemove = allForums.First(forum => forum.Id == id);
+            await ForumHome.DeleteAsync(id);
+            allForums.Remove(todoToRemove);
+        }
+        catch (Exception e)
+        {
+            errorLabel = e.Message;
+        }
+    }
+    
+    public void checkLogin()
+    {
+
+        if (AuthServiceImpl.getCurrentUser() == null)
+        {
+            navMgr.NavigateTo("/Login");
+        } 
+    }
+
+    private async Task ToggleStatus(bool status, Forum forum)
+    {
+        errorLabel = "";
+        try
+        {
+            await ForumHome.UpdateAsync(forum);
+        }
+        catch (Exception e)
+        {
+            errorLabel = e.Message;
+        }
+    }
+
+    private void OpenCloseFilters()
+    {
+        doShowFilters = !doShowFilters;
+        if (!doShowFilters)
+        {
+            ownerIdFilter = null;
+            isCompletedFilter = null;
+            forumsToShow = allForums;
+        }
+    }
+
+    private void UpdateOwnerFilter(ChangeEventArgs args)
+    {
+        string value = (string)args.Value;
+        if (string.IsNullOrEmpty(value))
+        {
+            ownerIdFilter = null;
+            ApplyFilters();
+            return;
+        }
+        int idFilter = int.Parse(value);
+        if (idFilter < 0)
+        {
+            return;
+        }
+        
+        ownerIdFilter = idFilter;
+        ApplyFilters();
+    }
+
+    private void UpdateCompletedStatusFilter(ChangeEventArgs args)
+    {
+        string value = (string)args.Value;
+
+        try
+        {
+            isCompletedFilter = bool.Parse(value);
+        }
+        catch (Exception e)
+        {
+            isCompletedFilter = null;
+        }
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        forumsToShow = allForums;
+       
+        if (ownerIdFilter != null)
+        {
+            forumsToShow = forumsToShow.Where(forum => forum.OwnerId == ownerIdFilter).ToList();
+        }
+    }
+    
+    private void Edit(int itemId)
+    {
+        navMgr.NavigateTo($"/EditPost/{itemId}");
+       
+    }
+}
