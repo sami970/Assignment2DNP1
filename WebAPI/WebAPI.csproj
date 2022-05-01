@@ -12,6 +12,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Domain\Domain.csproj" />
+      <ProjectReference Include="..\EfcData\EfcData.csproj" />
       <ProjectReference Include="..\JsonDataAccess\JsonDataAccess.csproj" />
     </ItemGroup>
 

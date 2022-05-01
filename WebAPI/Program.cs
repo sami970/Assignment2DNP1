@@ -1,6 +1,13 @@
 using AssignmentDNP1.Services;
 using Blazor.Services;
+using EfcData;
 using JsonDataAccess.DataAccess;
+
+using (PostContext ctx = new())
+{
+    ctx.SeedPost();
+    ctx.SeedUser();
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,10 +17,12 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<IForumHome, ForumFileDAO>();
-builder.Services.AddScoped<IUserService, UserService>();
+//Forum
+builder.Services.AddScoped<IForumHome, PostDAO>();
+builder.Services.AddScoped<PostContext>();
 
-builder.Services.AddScoped<FileContext>();
+//User
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<PostUserFileContext>();
 
 var app = builder.Build();
